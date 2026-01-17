@@ -1,14 +1,11 @@
 name: Build and Release Archives
 
 on:
-  # Run on pushes to the main branch
   push:
     branches:
       - main
-  # Allow manual runs from the GitHub UI
   workflow_dispatch:
 
-# Grant permissions for creating releases
 permissions:
   contents: write
 
@@ -22,44 +19,40 @@ jobs:
       - name: Create Archives
         id: build
         run: |
-          echo "Creating .zip archive..."
-          # -r: recursive
-          # -x: exclude patterns
-          zip -r release.zip . -x ".git/*" ".github/*"
-          
-          echo "Creating .tar.gz archive..."
-          # --exclude: exclude patterns (must be before -czvf)
-          # -c: create, -z: gzip, -v: verbose, -f: file
-          tar --exclude='.git' --exclude='.github' -czvf release.tar.gz .
+          # Define paths in the temporary runner directory
+          # This prevents the "file changed" error and keeps the source clean
+          ZIP_FILE="${{ runner.temp }}/release.zip"
+          TAR_FILE="${{ runner.temp }}/release.tar.gz"
 
-          # Output the file paths so the release step can find them
-          echo "zip_path=./release.zip" >> $GITHUB_OUTPUT
-          echo "tar_path=./release.tar.gz" >> $GITHUB_OUTPUT
+          echo "Creating .zip archive at $ZIP_FILE..."
+          # -r: recursive, -x: exclude .git and .github folders
+          zip -r "$ZIP_FILE" . -x ".git/*" ".github/*"
+          
+          echo "Creating .tar.gz archive at $TAR_FILE..."
+          # --exclude must be before the -czvf flags
+          tar --exclude='.git' --exclude='.github' -czvf "$TAR_FILE" .
+
+          # Output the absolute paths so the release step can find them
+          echo "zip_path=$ZIP_FILE" >> $GITHUB_OUTPUT
+          echo "tar_path=$TAR_FILE" >> $GITHUB_OUTPUT
 
       - name: Generate Tag
         id: tag
         run: |
-          # Create a version tag like v1.0.1, v1.0.2 based on the run number
           TAG_NAME="v1.0.${{ github.run_number }}"
           echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # The tag created in the previous step
           tag_name: ${{ steps.tag.outputs.tag }}
-          # Name of the release
           name: Release ${{ steps.tag.outputs.tag }}
-          # Body of the release
           body: |
             Automated archive build.
             Contains the contents of the main branch (excluding .git and .github).
-          # Files to upload (using the pipe | for multiple lines)
           files: |
             ${{ steps.build.outputs.zip_path }}
             ${{ steps.build.outputs.tar_path }}
-          # This marks this new release as the "latest"
           latest: true
         env:
-          # The GITHUB_TOKEN is required to create a release
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
