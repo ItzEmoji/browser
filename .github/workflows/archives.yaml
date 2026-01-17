@@ -26,11 +26,11 @@ jobs:
 
           echo "Creating .zip archive at $ZIP_FILE..."
           # -r: recursive, -x: exclude .git and .github folders
-          zip -r "$ZIP_FILE" . -x ".git/*" ".github/*"
+          zip -r "$ZIP_FILE" . -x ".git/*" ".github/*" "installbrowser.ps1" "README.md"
           
           echo "Creating .tar.gz archive at $TAR_FILE..."
           # --exclude must be before the -czvf flags
-          tar --exclude='.git' --exclude='.github' -czvf "$TAR_FILE" .
+          tar --exclude='.git' --exclude='.github' --exclude "installbrowser.ps1" --exclude "README.md" -czvf "$TAR_FILE" .
 
           # Output the absolute paths so the release step can find them
           echo "zip_path=$ZIP_FILE" >> $GITHUB_OUTPUT
